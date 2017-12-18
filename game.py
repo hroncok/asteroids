@@ -3,23 +3,24 @@ import pyglet
 from pyglet.window import key
 
 # Consts
+ACCELERATION = 20 # pixels per sec per sec
 ROTATION_SPEED = 4  # radians per sec
 
 # Global state:
 objects = []  # we'll store all game objects here
 pressed_keys = set()  # currently pressed keys, a set
-
+batch = pyglet.graphics.Batch()  # we'll put all sprites here
 
 # Classes:
-class Spaceship:
+class SpaceObject:
     """
-    This class represents human playable spaceship
+    This class represents any space object
 
     Attributes:
 
      * x, y: position in the window
      * x_spped, y_speed: speed in x/y direction
-     * rotation: rotation of the ship in radians, 0 means facing north
+     * rotation: rotation of the object in radians, 0 means facing north
     """
     def __init__(self):
         # set some initial values:
@@ -30,9 +31,10 @@ class Spaceship:
         self.y_speed = 0
 
         # assign and position the sprite with image
-        image = pyglet.image.load('spaceship.png')
-        self.sprite = pyglet.sprite.Sprite(image)
-        # TODO: make the image move and rotate against its center
+        image = pyglet.image.load(self.image_path())
+        image.anchor_x = image.width // 2
+        image.anchor_y = image.height // 2
+        self.sprite = pyglet.sprite.Sprite(image, batch=batch)
         self.update_sprite()
 
         # register the ship to the global list of game objects
@@ -54,16 +56,7 @@ class Spaceship:
         A certain time period (dt) in seconds have passed, so let's move the
         ship according to its speed and the keys the user is holding
         """
-        rotation_speed = 0  # no keys pressed, no rotation
-        if key.LEFT in pressed_keys:
-            rotation_speed += ROTATION_SPEED
-        if key.RIGHT in pressed_keys:
-            rotation_speed -= ROTATION_SPEED
-
-        # TODO: accelerate when key.UP is pressed
-
         # apply SPEED * TIME = DISTANCE
-        self.rotation += rotation_speed * dt
         self.x += dt * self.x_speed
         self.y += dt * self.y_speed
 
@@ -75,8 +68,31 @@ class Spaceship:
         self.update_sprite()
 
 
+class SpaceShip(SpaceObject):
+    def image_path(self):
+        return 'spaceship.png'
+
+    def tick(self, dt):
+        rotation_speed = 0  # no keys pressed, no rotation
+        acceleration = 0
+        if key.LEFT in pressed_keys:
+            rotation_speed += ROTATION_SPEED
+        if key.RIGHT in pressed_keys:
+            rotation_speed -= ROTATION_SPEED
+        if key.UP in pressed_keys:
+            acceleration = ACCELERATION
+
+        # Accelerate when key.UP is pressed
+        self.x_speed += dt * acceleration * math.cos(self.rotation)
+        self.y_speed += dt * acceleration * math.sin(self.rotation)
+
+        self.rotation += rotation_speed * dt
+
+        super().tick(dt)
+
+
 # Create new spaceship, it registers itself to the global list
-spaceship = Spaceship()
+spaceship = SpaceShip()
 
 
 # Pyglet objects and functions
@@ -88,9 +104,7 @@ window = pyglet.window.Window()
 def draw_all_objects():
     """For all objects, draw theirs sprites"""
     window.clear()
-    for obj in objects:
-        obj.sprite.draw()
-
+    batch.draw()
 
 def tick_all_objects(dt):
     """For all objects, tick them"""
