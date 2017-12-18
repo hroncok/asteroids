@@ -1,15 +1,20 @@
 import math
+import random
+
 import pyglet
 from pyglet.window import key
 
 # Consts
-ACCELERATION = 20 # pixels per sec per sec
+ACCELERATION = 20  # pixels per sec per sec
 ROTATION_SPEED = 4  # radians per sec
+ASTEROID_SPEED = 100  # pixels/radians per sec (divided by 10 for rads)
+
 
 # Global state:
 objects = []  # we'll store all game objects here
 pressed_keys = set()  # currently pressed keys, a set
 batch = pyglet.graphics.Batch()  # we'll put all sprites here
+
 
 # Classes:
 class SpaceObject:
@@ -52,10 +57,6 @@ class SpaceObject:
         self.sprite.rotation = 90 - math.degrees(self.rotation)
 
     def tick(self, dt):
-        """
-        A certain time period (dt) in seconds have passed, so let's move the
-        ship according to its speed and the keys the user is holding
-        """
         # apply SPEED * TIME = DISTANCE
         self.x += dt * self.x_speed
         self.y += dt * self.y_speed
@@ -69,6 +70,9 @@ class SpaceObject:
 
 
 class SpaceShip(SpaceObject):
+    """
+    Spaceship is controlled by keyboard!
+    """
     def image_path(self):
         return 'spaceship.png'
 
@@ -91,20 +95,54 @@ class SpaceShip(SpaceObject):
         super().tick(dt)
 
 
-# Create new spaceship, it registers itself to the global list
-spaceship = SpaceShip()
+class Asteroid(SpaceObject):
+    """
+    Asteroids fly by with random speed and rotation, they differ in sizes
+    """
+    def __init__(self):
+        super().__init__()
+        coin = random.randint(0, 1)
+        if coin:
+            self.x = window.width // 2
+            self.y = 0
+        else:
+            self.x = 0
+            self.y = window.height // 2
+        self.x_speed = self.random_speed()
+        self.y_speed = self.random_speed()
+        self.rotation_speed = self.random_speed() // 10
 
+    def random_speed(self):
+        return random.randint(-ASTEROID_SPEED, ASTEROID_SPEED)
 
-# Pyglet objects and functions
+    def image_path(self):
+        sizes = ['big', 'med', 'small', 'tiny']
+        size = random.choice(sizes)
+        num = random.randint(1, 2)
+        return 'meteorGrey_{}{}.png'.format(size, num)
+
+    def tick(self, dt):
+        self.rotation += self.rotation_speed * dt
+        super().tick(dt)
+
 
 # main window
 window = pyglet.window.Window()
 
 
+# Create new spaceship, it registers itself to the global list
+spaceship = SpaceShip()
+# Add some asteroids
+for _ in range(8):
+    Asteroid()
+
+
+# Pyglet objects and functions
 def draw_all_objects():
     """For all objects, draw theirs sprites"""
     window.clear()
     batch.draw()
+
 
 def tick_all_objects(dt):
     """For all objects, tick them"""
